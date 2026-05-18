@@ -62,14 +62,11 @@ details = [
 
 [[projects]]
 name    = "homelab"
-tagline = "This site. Personal intro served over SSH."
+tagline = "My own little datacenter at home."
 url     = "https://github.com/ildar7070/homelab"
 details = [
-  "A terminal-first personal website. Visitors connect with",
-  "ssh i12k.dev and navigate through tabs and lists with the",
-  "keyboard — no browser, no JavaScript, no tracking.",
-  "",
-  "Built with Go, Charm Wish, and Bubble Tea.",
+  "Proxmox as the hypervisor, with a k3s cluster running on top",
+  "for personal services and experiments.",
 ]
 
 [[projects]]

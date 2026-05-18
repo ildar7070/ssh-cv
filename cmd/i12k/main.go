@@ -2,8 +2,9 @@
 //
 //	ssh user@host -p 2222
 //
-// On connect, visitors see a typewriter animation playing through whoami,
-// about, skills, projects, and contact. Content lives in content.toml.
+// On connect, visitors land on a splash screen with a pulsing
+// "Press Enter to start" CTA, then navigate a tabbed TUI
+// (Start, CV, Projects, Contact). Content lives in content.toml.
 package main
 
 import (

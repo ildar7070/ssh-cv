@@ -1,0 +1,15 @@
+services:
+  i12k:
+    build: .
+    container_name: i12k
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+    volumes:
+      # Persist host key so the server's SSH identity stays stable across restarts.
+      - i12k_data:/data
+      # Hot-edit content without rebuilding the image.
+      - ./content.toml:/app/content.toml:ro
+
+volumes:
+  i12k_data:

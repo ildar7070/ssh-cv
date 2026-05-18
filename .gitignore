@@ -1,0 +1,23 @@
+# Build artifacts
+/bin/
+/dist/
+*.exe
+
+# SSH host keys (regenerated per environment)
+/.ssh/
+.host_key
+.host_key.pub
+
+# Local env
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Go
+*.test
+*.out
+vendor/

@@ -14,6 +14,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -128,7 +130,11 @@ func defaultLabel(id string) string {
 	if id == "" {
 		return ""
 	}
-	return strings.ToUpper(id[:1]) + id[1:]
+	r, size := utf8.DecodeRuneInString(id)
+	if r == utf8.RuneError {
+		return id
+	}
+	return string(unicode.ToUpper(r)) + id[size:]
 }
 
 // Validate returns a descriptive error if the profile is missing required
@@ -136,6 +142,9 @@ func defaultLabel(id string) string {
 func (p *Profile) Validate() error {
 	if strings.TrimSpace(p.Name) == "" {
 		return fmt.Errorf("name is required")
+	}
+	if len(p.Sections) > 0 && sectionValidator == nil {
+		return fmt.Errorf("no section validator registered — import internal/tui/sections for its init() to wire one in")
 	}
 	seen := make(map[string]bool, len(p.Sections))
 	for i, s := range p.Sections {
@@ -149,13 +158,11 @@ func (p *Profile) Validate() error {
 			return fmt.Errorf("section id %q listed more than once", s.ID)
 		}
 		seen[s.ID] = true
-		if sectionValidator != nil {
-			if !sectionValidator.Known(s.Type) {
-				return fmt.Errorf("section %q: unknown type %q", s.ID, s.Type)
-			}
-			if err := sectionValidator.Validate(s); err != nil {
-				return fmt.Errorf("section %q: %w", s.ID, err)
-			}
+		if !sectionValidator.Known(s.Type) {
+			return fmt.Errorf("section %q: unknown type %q", s.ID, s.Type)
+		}
+		if err := sectionValidator.Validate(s); err != nil {
+			return fmt.Errorf("section %q: %w", s.ID, err)
 		}
 	}
 	for field, color := range map[string]string{

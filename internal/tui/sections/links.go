@@ -32,12 +32,7 @@ func (linksRenderer) Validate(s content.Section) error {
 }
 
 func (linksRenderer) IsEmpty(s content.Section) bool {
-	for _, it := range s.Items {
-		if strings.TrimSpace(it.Value) != "" {
-			return false
-		}
-	}
-	return true
+	return len(s.Items) == 0
 }
 
 func (linksRenderer) Render(s content.Section, ctx RenderContext) string {

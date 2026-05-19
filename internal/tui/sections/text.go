@@ -18,8 +18,10 @@ func (textRenderer) Type() string { return "text" }
 func (textRenderer) Validate(s content.Section) error { return nil }
 
 func (textRenderer) IsEmpty(s content.Section) bool {
-	if len(s.Lines) > 0 {
-		return false
+	for _, l := range s.Lines {
+		if strings.TrimSpace(l) != "" {
+			return false
+		}
 	}
 	return true
 }

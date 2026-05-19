@@ -130,6 +130,45 @@ lines = ["hi"]
 	}
 }
 
+func TestLoad_NoValidator_Errors(t *testing.T) {
+	// Hard fail if a profile declares sections but no SectionValidator has
+	// been wired in. Prevents silent acceptance of unknown section types
+	// when callers forget the side-effect import of internal/tui/sections.
+	prev := sectionValidator
+	sectionValidator = nil
+	t.Cleanup(func() { sectionValidator = prev })
+
+	path := writeTOML(t, `
+name = "Jane"
+[[sections]]
+id   = "x"
+type = "text"
+lines = ["hi"]
+`)
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "validator") {
+		t.Fatalf("expected no-validator error, got %v", err)
+	}
+}
+
+func TestLoad_DefaultLabel_UnicodeFirstRune(t *testing.T) {
+	withFakeValidator(t, "text")
+	path := writeTOML(t, `
+name = "Jane"
+[[sections]]
+id   = "über"
+type = "text"
+lines = ["hi"]
+`)
+	p, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := p.Sections[0].Label; got != "Über" {
+		t.Errorf("default label = %q, want %q", got, "Über")
+	}
+}
+
 func TestVisibleSections_HidesEmpty(t *testing.T) {
 	withFakeValidator(t, "text", "list")
 	path := writeTOML(t, `
@@ -152,12 +191,4 @@ type = "list"
 	if len(vis) != 1 || vis[0].ID != "start" {
 		t.Fatalf("visible sections = %+v, want only start", vis)
 	}
-}
-
-func TestLoad_ExampleTOML(t *testing.T) {
-	// Sanity: the shipped example must always parse and validate against
-	// the real renderer registry. Importing sections here would be a
-	// cycle, so this test runs from the tui/sections side instead — see
-	// internal/tui/sections/example_test.go.
-	t.Skip("moved to internal/tui/sections to avoid an import cycle")
 }

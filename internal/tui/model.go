@@ -85,8 +85,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case blinkMsg:
-		// Keep the timer running so it can resume if the user ever
-		// returns to splash (currently one-way, but cheap to keep alive).
+		if m.mode != modeSplash {
+			return m, nil
+		}
 		m.splashBlink = !m.splashBlink
 		return m, blinkCmd()
 

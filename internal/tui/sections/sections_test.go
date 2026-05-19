@@ -10,6 +10,15 @@ import (
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
 
+func mustRenderer(t *testing.T, typ string) Renderer {
+	t.Helper()
+	r, ok := Get(typ)
+	if !ok {
+		t.Fatalf("renderer %q not registered", typ)
+	}
+	return r
+}
+
 func TestRegistry_BuiltinTypes(t *testing.T) {
 	for _, typ := range []string{"text", "list", "links"} {
 		if _, ok := Get(typ); !ok {
@@ -19,7 +28,7 @@ func TestRegistry_BuiltinTypes(t *testing.T) {
 }
 
 func TestList_ValidateRequiresTitle(t *testing.T) {
-	r, _ := Get("list")
+	r := mustRenderer(t, "list")
 	err := r.Validate(content.Section{
 		Type:  "list",
 		Items: []content.Item{{Title: ""}},
@@ -30,7 +39,7 @@ func TestList_ValidateRequiresTitle(t *testing.T) {
 }
 
 func TestLinks_ValidateRequiresLabelAndValue(t *testing.T) {
-	r, _ := Get("links")
+	r := mustRenderer(t, "links")
 	if err := r.Validate(content.Section{Type: "links", Items: []content.Item{{Label: ""}}}); err == nil {
 		t.Error("expected error when links item has no label")
 	}
@@ -40,22 +49,18 @@ func TestLinks_ValidateRequiresLabelAndValue(t *testing.T) {
 }
 
 func TestList_HandleKey(t *testing.T) {
-	r, _ := Get("list")
+	r := mustRenderer(t, "list")
 	s := content.Section{Type: "list", Items: []content.Item{{Title: "a"}, {Title: "b"}, {Title: "c"}}}
 
-	// Down from 0 → 1.
 	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyDown}); !handled || got != 1 {
 		t.Errorf("down from 0: got %d handled=%v, want 1 true", got, handled)
 	}
-	// Up at 0 stays at 0.
-	if got, _ := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyUp}); got != 0 {
-		t.Errorf("up at 0: got %d, want 0", got)
+	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyUp}); !handled || got != 0 {
+		t.Errorf("up at 0: got %d handled=%v, want 0 true", got, handled)
 	}
-	// End jumps to last.
-	if got, _ := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")}); got != 2 {
-		t.Errorf("end: got %d, want 2", got)
+	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")}); !handled || got != 2 {
+		t.Errorf("end: got %d handled=%v, want 2 true", got, handled)
 	}
-	// Unrelated key not handled.
 	if _, handled := r.HandleKey(s, 1, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}); handled {
 		t.Error("unrelated key should not be handled")
 	}
@@ -75,7 +80,7 @@ func TestIsEmpty(t *testing.T) {
 		{"links", content.Section{Type: "links", Items: []content.Item{{Label: "e", Value: "v"}}}, false},
 	}
 	for _, c := range cases {
-		r, _ := Get(c.typ)
+		r := mustRenderer(t, c.typ)
 		if got := r.IsEmpty(c.sec); got != c.want {
 			t.Errorf("%s IsEmpty(%+v) = %v, want %v", c.typ, c.sec, got, c.want)
 		}
@@ -109,7 +114,7 @@ func TestRender_DoesNotPanic(t *testing.T) {
 		{ID: "c", Type: "links", Label: "C", Items: []content.Item{{Label: "e", Value: "v"}}},
 	}
 	for _, s := range sections {
-		r, _ := Get(s.Type)
+		r := mustRenderer(t, s.Type)
 		out := r.Render(s, ctx)
 		if strings.TrimSpace(out) == "" {
 			t.Errorf("renderer %q produced empty output", s.Type)

@@ -1,6 +1,20 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/ildar7070/ssh-cv/internal/content"
+)
+
+// Default palette. Used when content.Theme leaves a field empty.
+const (
+	defaultAccent     = "#7ee787"
+	defaultAccent2    = "#d2a8ff"
+	defaultForeground = "#e6edf3"
+	defaultMuted      = "#7d8590"
+	defaultBackground = "#0d1117"
+	defaultSelection  = "#1f2a1f"
+)
 
 // Styles holds every Lipgloss style used by the TUI. It must be built from a
 // per-session *lipgloss.Renderer (see NewStyles) so the color profile reflects
@@ -30,17 +44,15 @@ type Styles struct {
 	SplashHintHighlight lipgloss.Style
 }
 
-// NewStyles builds the style set bound to the given renderer. Pass the
-// renderer returned by bubbletea.MakeRenderer(sess) on each connect.
-func NewStyles(r *lipgloss.Renderer) Styles {
-	var (
-		accent   = lipgloss.Color("#7ee787")
-		accent2  = lipgloss.Color("#d2a8ff")
-		fg       = lipgloss.Color("#e6edf3")
-		muted    = lipgloss.Color("#7d8590")
-		bgSelect = lipgloss.Color("#1f2a1f")
-		bgDark   = lipgloss.Color("#0d1117")
-	)
+// NewStyles builds the style set bound to the given renderer and theme.
+// Empty theme fields fall back to the built-in palette.
+func NewStyles(r *lipgloss.Renderer, theme content.Theme) Styles {
+	accent := lipgloss.Color(orDefault(theme.Accent, defaultAccent))
+	accent2 := lipgloss.Color(orDefault(theme.Accent2, defaultAccent2))
+	fg := lipgloss.Color(orDefault(theme.Foreground, defaultForeground))
+	muted := lipgloss.Color(orDefault(theme.Muted, defaultMuted))
+	bgDark := lipgloss.Color(orDefault(theme.Background, defaultBackground))
+	bgSelect := lipgloss.Color(orDefault(theme.Selection, defaultSelection))
 
 	ns := r.NewStyle
 
@@ -71,4 +83,11 @@ func NewStyles(r *lipgloss.Renderer) Styles {
 		SplashHint:          ns().Foreground(muted),
 		SplashHintHighlight: ns().Foreground(bgDark).Background(accent).Bold(true),
 	}
+}
+
+func orDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }

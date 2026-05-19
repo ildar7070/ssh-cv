@@ -1,16 +1,15 @@
 // Package tui is the Bubble Tea program rendered to each SSH visitor.
 //
-// Layout:
+// Visitors land on a splash screen. After Enter, they navigate a tabbed app
+// whose tabs and contents are driven entirely by content.toml — the Model
+// itself only owns the mode (splash vs. app), the active tab index,
+// per-list selection indices, and the terminal size.
 //
-//	┌─ splash ─────────────────────┐      ┌─ app ────────────────────────┐
-//	│                              │      │ Start │ CV │ Projects │ ...  │
-//	│           i12k               │ ───► ├──────────────────────────────┤
-//	│   Press Enter to start       │      │ List       │ Detail          │
-//	│                              │      │            │                 │
-//	└──────────────────────────────┘      └──────────────────────────────┘
+// Sub-views are pure render functions; they do not hold state.
 package tui
 
 import (
+	"math"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,44 +36,18 @@ const (
 	modeApp
 )
 
-// Tab identifiers. Order matches the header rendering and 1–4 shortcuts.
-type tab int
-
-const (
-	tabStart tab = iota
-	tabCV
-	tabProjects
-	tabContact
-)
-
-func (t tab) String() string {
-	switch t {
-	case tabStart:
-		return "Start"
-	case tabCV:
-		return "CV"
-	case tabProjects:
-		return "Projects"
-	case tabContact:
-		return "Contact"
-	}
-	return ""
-}
-
-var allTabs = []tab{tabStart, tabCV, tabProjects, tabContact}
-
-// Model is the root Bubble Tea model. It owns the current mode (splash vs.
-// app), the active tab, the per-list selection index, and the terminal size.
-// Sub-views are pure render functions — they don't hold their own state.
+// Model is the root Bubble Tea model.
 type Model struct {
 	profile *content.Profile
 	styles  Styles
 
-	mode mode
-	tab  tab
+	tabs []content.TabSpec // resolved at construction; only non-empty tabs
 
-	cvIdx       int
-	projectsIdx int
+	mode      mode
+	activeTab int // index into tabs
+
+	// Per-list selection. Keyed by TabID so we don't hardcode field names.
+	selection map[content.TabID]int
 
 	// splashBlink toggles every blinkInterval while in modeSplash, driving
 	// the "Press Enter to start" highlight pulse.
@@ -93,10 +66,11 @@ func New(p *content.Profile, r *lipgloss.Renderer) Model {
 		r = lipgloss.DefaultRenderer()
 	}
 	return Model{
-		profile: p,
-		styles:  NewStyles(r),
-		mode:    modeSplash,
-		tab:     tabStart,
+		profile:   p,
+		styles:    NewStyles(r, p.Theme),
+		tabs:      p.VisibleTabs(),
+		mode:      modeSplash,
+		selection: make(map[content.TabID]int),
 	}
 }
 
@@ -135,28 +109,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateApp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	switch key := msg.String(); key {
 	case "esc":
 		return m, tea.Quit
 
-	// Tab switching: Tab / Shift+Tab and digits 1–4.
-	// Bounded — no wrap-around. Holding the key stops at the first/last tab.
+	// Tab switching: Tab / Shift+Tab. Bounded — no wrap-around.
 	case "tab", "right", "l":
-		if m.tab < tab(len(allTabs)-1) {
-			m.tab++
+		if m.activeTab < len(m.tabs)-1 {
+			m.activeTab++
 		}
 	case "shift+tab", "left", "h":
-		if m.tab > 0 {
-			m.tab--
+		if m.activeTab > 0 {
+			m.activeTab--
 		}
-	case "1":
-		m.tab = tabStart
-	case "2":
-		m.tab = tabCV
-	case "3":
-		m.tab = tabProjects
-	case "4":
-		m.tab = tabContact
 
 	// List navigation on list-based tabs.
 	case "up", "k":
@@ -166,47 +131,53 @@ func (m Model) updateApp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "home", "g":
 		m.setSelection(0)
 	case "end", "G":
-		m.setSelection(1 << 30)
+		m.setSelection(math.MaxInt)
+
+	default:
+		// Digit shortcuts 1..9 jump to the Nth visible tab.
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			idx := int(key[0] - '1')
+			if idx < len(m.tabs) {
+				m.activeTab = idx
+			}
+		}
 	}
 	return m, nil
 }
 
+func (m *Model) currentTab() content.TabID {
+	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
+		return ""
+	}
+	return m.tabs[m.activeTab].ID
+}
+
 func (m *Model) listLen() int {
-	switch m.tab {
-	case tabCV:
+	switch m.currentTab() {
+	case content.TabCV:
 		return len(m.profile.CV)
-	case tabProjects:
+	case content.TabProjects:
 		return len(m.profile.Projects)
 	}
 	return 0
 }
 
-func (m *Model) selectionPtr() *int {
-	switch m.tab {
-	case tabCV:
-		return &m.cvIdx
-	case tabProjects:
-		return &m.projectsIdx
-	}
-	return nil
-}
-
 func (m *Model) moveSelection(delta int) {
-	idx := m.selectionPtr()
+	id := m.currentTab()
 	n := m.listLen()
-	if idx == nil || n == 0 {
+	if n == 0 {
 		return
 	}
-	*idx = clamp(*idx+delta, 0, n-1)
+	m.selection[id] = clamp(m.selection[id]+delta, 0, n-1)
 }
 
 func (m *Model) setSelection(v int) {
-	idx := m.selectionPtr()
+	id := m.currentTab()
 	n := m.listLen()
-	if idx == nil || n == 0 {
+	if n == 0 {
 		return
 	}
-	*idx = clamp(v, 0, n-1)
+	m.selection[id] = clamp(v, 0, n-1)
 }
 
 func clamp(v, lo, hi int) int {

@@ -1,0 +1,128 @@
+# ──────────────────────────────────────────────────────────────────────
+#  ssh-cv content file
+#
+#  Everything except `name` is optional. Leaving a section empty hides
+#  the corresponding tab in the TUI.
+#
+#  Save this as `content.toml`, edit, then start the container:
+#
+#    docker run -d -p 2222:2222 \
+#      -v $PWD/content.toml:/app/content.toml:ro \
+#      -v sshcv_data:/data \
+#      ghcr.io/ildar7070/ssh-cv:latest
+#
+#  Connect:
+#
+#    ssh -p 2222 localhost
+# ──────────────────────────────────────────────────────────────────────
+
+name    = "Jane Doe"
+tagline = "Software engineer, occasional gardener."
+
+# ─── Splash ───────────────────────────────────────────────────────────
+# The entry screen shown before the visitor presses Enter.
+# Both fields are optional. title defaults to `name`, cta to the line below.
+[splash]
+title = "jd"
+cta   = "Press Enter to start"
+
+# ─── About (shown on the Start tab) ───────────────────────────────────
+# Each entry is a line; an empty string ("") renders as a blank line.
+[about]
+lines = [
+  "I build software that ships — distributed systems, developer tools,",
+  "and the occasional weekend experiment that gets out of hand.",
+  "",
+  "Currently available for consulting engagements.",
+]
+
+# ─── Theme ────────────────────────────────────────────────────────────
+# Override individual palette colors. Any field you omit keeps the built-in
+# default. Values must be #RRGGBB hex.
+#
+# [theme]
+# accent     = "#7ee787"   # primary highlight (tab active, headings)
+# accent2    = "#d2a8ff"   # secondary (subtitles)
+# foreground = "#e6edf3"
+# muted      = "#7d8590"
+# background = "#0d1117"   # used for inverse text on accent
+# selection  = "#1f2a1f"   # list item selection background
+
+# ─── Tabs ─────────────────────────────────────────────────────────────
+# Controls which built-in tabs appear and in what order. Omit this entire
+# section to get the default order: start, cv, projects, contact.
+#
+# Recognized IDs: "start", "cv", "projects", "contact".
+# A tab whose backing section is empty is automatically hidden.
+#
+# [[tabs]]
+# id    = "start"
+# label = "Start"          # optional; defaults to a sensible per-id label
+# [[tabs]]
+# id = "cv"
+# [[tabs]]
+# id = "projects"
+# [[tabs]]
+# id = "contact"
+
+# ─── CV ───────────────────────────────────────────────────────────────
+# One [[cv]] block per role. List newest first.
+[[cv]]
+role    = "Senior Software Engineer"
+company = "Acme Corp"
+period  = "2022 — Present"
+summary = "Backend platform, distributed systems, developer experience."
+bullets = [
+  "Led migration from monolith to event-driven services.",
+  "Mentored 4 engineers; ran the internal Go guild.",
+  "Reduced p99 API latency by 60% on the core service.",
+]
+
+[[cv]]
+role    = "Software Engineer"
+company = "Previous Co."
+period  = "2019 — 2022"
+summary = "Full-stack work across web and infra."
+bullets = [
+  "Owned the billing pipeline end to end.",
+  "Introduced infrastructure-as-code (Terraform) to the team.",
+]
+
+# ─── Projects ─────────────────────────────────────────────────────────
+# One [[projects]] block per project.
+[[projects]]
+name    = "ssh-cv"
+tagline = "This site. Personal CV served over SSH."
+url     = "https://github.com/ildar7070/ssh-cv"
+details = [
+  "A terminal-first personal site. Visitors connect with ssh and",
+  "navigate through tabs and lists with the keyboard — no browser,",
+  "no JavaScript, no tracking.",
+  "",
+  "Built with Go, Charm Wish, and Bubble Tea.",
+]
+
+[[projects]]
+name    = "garden-log"
+tagline = "What I planted, what survived, what didn't."
+url     = ""
+details = [
+  "A small static-site experiment tracking which tomato varieties",
+  "actually produced anything in zone 7b. Surprisingly fun.",
+]
+
+# ─── Contact ──────────────────────────────────────────────────────────
+# One [[contact]] block per link. label is shown left-aligned;
+# value is what visitors copy or click. Add as many as you like —
+# the TUI just iterates over them.
+[[contact]]
+label = "email"
+value = "jane@example.com"
+
+[[contact]]
+label = "github"
+value = "https://github.com/janedoe"
+
+[[contact]]
+label = "linkedin"
+value = "https://www.linkedin.com/in/janedoe/"

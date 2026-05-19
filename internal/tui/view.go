@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ildar7070/i12k/internal/content"
+	"github.com/ildar7070/ssh-cv/internal/content"
 )
 
 // Minimum dimensions we render fully. Below this we fall back to a single

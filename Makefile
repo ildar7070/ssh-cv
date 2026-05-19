@@ -1,11 +1,11 @@
-.PHONY: run build tidy fmt vet test docker up down logs ssh
+.PHONY: run build tidy fmt vet test ci docker up down logs ssh
 
 # Local Go (requires Go 1.23+).
 run:
-	go run ./cmd/i12k
+	go run ./cmd/ssh-cv
 
 build:
-	go build -o bin/i12k ./cmd/i12k
+	go build -o bin/ssh-cv ./cmd/ssh-cv
 
 tidy:
 	go mod tidy
@@ -19,9 +19,11 @@ vet:
 test:
 	go test ./...
 
+ci: fmt vet test build
+
 # Docker / compose.
 docker:
-	docker build -t i12k .
+	docker build -t ssh-cv .
 
 up:
 	docker compose up -d --build

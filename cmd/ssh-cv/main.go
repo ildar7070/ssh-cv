@@ -25,8 +25,8 @@ import (
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
 
-	"github.com/ildar7070/i12k/internal/content"
-	"github.com/ildar7070/i12k/internal/tui"
+	"github.com/ildar7070/ssh-cv/internal/content"
+	"github.com/ildar7070/ssh-cv/internal/tui"
 )
 
 func main() {

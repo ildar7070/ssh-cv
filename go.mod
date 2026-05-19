@@ -1,4 +1,4 @@
-module github.com/ildar7070/i12k
+module github.com/ildar7070/ssh-cv
 
 go 1.23
 

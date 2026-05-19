@@ -16,7 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ildar7070/i12k/internal/content"
+	"github.com/ildar7070/ssh-cv/internal/content"
 )
 
 // blinkInterval controls how often the splash CTA toggles between its

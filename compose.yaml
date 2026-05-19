@@ -1,15 +1,18 @@
+# Default compose file for local development with `make up`.
+# For consuming the prebuilt image, see README "Quickstart".
 services:
-  i12k:
+  ssh-cv:
     build: .
-    container_name: i12k
+    container_name: ssh-cv
     restart: unless-stopped
     ports:
       - "2222:2222"
     volumes:
       # Persist host key so the server's SSH identity stays stable across restarts.
-      - i12k_data:/data
-      # Hot-edit content without rebuilding the image.
+      - sshcv_data:/data
+      # Hot-edit content without rebuilding the image. Falls back to the
+      # bundled example if content.toml does not exist locally.
       - ./content.toml:/app/content.toml:ro
 
 volumes:
-  i12k_data:
+  sshcv_data:

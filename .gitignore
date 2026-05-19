@@ -12,6 +12,9 @@
 .env
 .env.local
 
+# Operator-supplied content; the framework ships content.example.toml.
+/content.toml
+
 # Editor
 .vscode/
 .idea/

@@ -10,9 +10,17 @@ services:
     volumes:
       # Persist host key so the server's SSH identity stays stable across restarts.
       - sshcv_data:/data
-      # Hot-edit content without rebuilding the image. Falls back to the
-      # bundled example if content.toml does not exist locally.
-      - ./content.toml:/app/content.toml:ro
+      # Hot-edit content without rebuilding the image.
+      # create_host_path: false makes Docker refuse to silently create a
+      # directory at ./content.toml if the file is missing — without it,
+      # a missing source becomes an empty directory that breaks the next
+      # `compose up` with a confusing "not a directory" mount error.
+      - type: bind
+        source: ./content.toml
+        target: /app/content.toml
+        read_only: true
+        bind:
+          create_host_path: false
 
 volumes:
   sshcv_data:

@@ -33,6 +33,7 @@ docker:
 	docker build -t ssh-cv .
 
 up: content
+	@test -f content.toml || { echo "ERR: content.toml missing or not a file"; exit 1; }
 	docker compose up -d --build
 
 down:

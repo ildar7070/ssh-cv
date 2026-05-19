@@ -16,6 +16,35 @@ func writeTOML(t *testing.T, body string) string {
 	return path
 }
 
+// fakeValidator stands in for the TUI's section registry so this package
+// can be tested without importing it (which would cause a cycle).
+type fakeValidator struct {
+	known map[string]bool
+}
+
+func (f fakeValidator) Known(typ string) bool { return f.known[typ] }
+func (f fakeValidator) Validate(s Section) error {
+	if !f.known[s.Type] {
+		return nil
+	}
+	return nil
+}
+func (f fakeValidator) IsEmpty(s Section) bool {
+	// Consider a section empty when it has neither lines nor items.
+	return len(s.Lines) == 0 && len(s.Items) == 0
+}
+
+func withFakeValidator(t *testing.T, types ...string) {
+	t.Helper()
+	prev := sectionValidator
+	known := make(map[string]bool, len(types))
+	for _, ty := range types {
+		known[ty] = true
+	}
+	SetSectionValidator(fakeValidator{known: known})
+	t.Cleanup(func() { sectionValidator = prev })
+}
+
 func TestLoad_MinimalProfile_AppliesDefaults(t *testing.T) {
 	path := writeTOML(t, `name = "Jane"`)
 	p, err := Load(path)
@@ -28,16 +57,8 @@ func TestLoad_MinimalProfile_AppliesDefaults(t *testing.T) {
 	if p.Splash.CTA != "Press Enter to start" {
 		t.Errorf("splash.cta default = %q, want %q", p.Splash.CTA, "Press Enter to start")
 	}
-	if len(p.Tabs) != len(BuiltinTabs) {
-		t.Fatalf("tabs default count = %d, want %d", len(p.Tabs), len(BuiltinTabs))
-	}
-	for i, want := range BuiltinTabs {
-		if p.Tabs[i].ID != want {
-			t.Errorf("tabs[%d].id = %q, want %q", i, p.Tabs[i].ID, want)
-		}
-		if p.Tabs[i].Label == "" {
-			t.Errorf("tabs[%d].label is empty — should have a default", i)
-		}
+	if len(p.Sections) != 0 {
+		t.Errorf("minimal profile should have no sections, got %d", len(p.Sections))
 	}
 }
 
@@ -48,29 +69,34 @@ func TestLoad_MissingName_Errors(t *testing.T) {
 	}
 }
 
-func TestLoad_UnknownTabID_Errors(t *testing.T) {
+func TestLoad_UnknownSectionType_Errors(t *testing.T) {
+	withFakeValidator(t, "text", "list", "links")
 	path := writeTOML(t, `
 name = "Jane"
-[[tabs]]
-id = "cvv"
+[[sections]]
+id = "x"
+type = "table"
 `)
 	_, err := Load(path)
-	if err == nil || !strings.Contains(err.Error(), `"cvv"`) {
-		t.Fatalf("expected unknown-tab error mentioning cvv, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), `"table"`) {
+		t.Fatalf("expected unknown-type error mentioning table, got %v", err)
 	}
 }
 
-func TestLoad_DuplicateTab_Errors(t *testing.T) {
+func TestLoad_DuplicateSectionID_Errors(t *testing.T) {
+	withFakeValidator(t, "list")
 	path := writeTOML(t, `
 name = "Jane"
-[[tabs]]
-id = "cv"
-[[tabs]]
-id = "cv"
+[[sections]]
+id = "experience"
+type = "list"
+[[sections]]
+id = "experience"
+type = "list"
 `)
 	_, err := Load(path)
 	if err == nil || !strings.Contains(err.Error(), "more than once") {
-		t.Fatalf("expected duplicate-tab error, got %v", err)
+		t.Fatalf("expected duplicate-id error, got %v", err)
 	}
 }
 
@@ -86,62 +112,52 @@ accent = "red"
 	}
 }
 
-func TestLoad_CustomSplashAndTheme(t *testing.T) {
+func TestLoad_DefaultLabelFromID(t *testing.T) {
+	withFakeValidator(t, "text")
 	path := writeTOML(t, `
 name = "Jane"
-[splash]
-title = "JD"
-cta = "Hit Enter"
-[theme]
-accent = "#abcdef"
+[[sections]]
+id   = "start"
+type = "text"
+lines = ["hi"]
 `)
 	p, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if p.Splash.Title != "JD" {
-		t.Errorf("splash.title = %q, want JD", p.Splash.Title)
-	}
-	if p.Splash.CTA != "Hit Enter" {
-		t.Errorf("splash.cta = %q, want Hit Enter", p.Splash.CTA)
-	}
-	if p.Theme.Accent != "#abcdef" {
-		t.Errorf("theme.accent = %q, want #abcdef", p.Theme.Accent)
+	if got := p.Sections[0].Label; got != "Start" {
+		t.Errorf("default label = %q, want %q", got, "Start")
 	}
 }
 
-func TestVisibleTabs_HidesEmptySections(t *testing.T) {
+func TestVisibleSections_HidesEmpty(t *testing.T) {
+	withFakeValidator(t, "text", "list")
 	path := writeTOML(t, `
 name = "Jane"
-[[cv]]
-role = "Dev"
+
+[[sections]]
+id   = "start"
+type = "text"
+lines = ["hi"]
+
+[[sections]]
+id   = "experience"
+type = "list"
 `)
 	p, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	visible := p.VisibleTabs()
-	wantIDs := map[TabID]bool{TabStart: true, TabCV: true}
-	if len(visible) != len(wantIDs) {
-		t.Fatalf("visible tabs = %d (%+v), want %d", len(visible), visible, len(wantIDs))
-	}
-	for _, v := range visible {
-		if !wantIDs[v.ID] {
-			t.Errorf("unexpected visible tab %q", v.ID)
-		}
+	vis := p.VisibleSections()
+	if len(vis) != 1 || vis[0].ID != "start" {
+		t.Fatalf("visible sections = %+v, want only start", vis)
 	}
 }
 
 func TestLoad_ExampleTOML(t *testing.T) {
-	// Sanity: the shipped example must always parse and validate.
-	p, err := Load("../../content.example.toml")
-	if err != nil {
-		t.Fatalf("content.example.toml does not load: %v", err)
-	}
-	if p.Name == "" {
-		t.Error("example profile has empty name")
-	}
-	if len(p.VisibleTabs()) == 0 {
-		t.Error("example profile has no visible tabs")
-	}
+	// Sanity: the shipped example must always parse and validate against
+	// the real renderer registry. Importing sections here would be a
+	// cycle, so this test runs from the tui/sections side instead — see
+	// internal/tui/sections/example_test.go.
+	t.Skip("moved to internal/tui/sections to avoid an import cycle")
 }

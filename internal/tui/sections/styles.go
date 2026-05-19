@@ -1,4 +1,11 @@
-package tui
+// Package sections owns the pluggable per-tab renderers used by the TUI.
+//
+// Each renderer is a Renderer implementation registered in its own
+// init(); the TUI's bodyView looks the right one up by Section.Type and
+// delegates rendering, key handling, and emptiness checks to it. New
+// section types are added by dropping a new file in this package — the
+// core TUI does not need to change.
+package sections
 
 import (
 	"github.com/charmbracelet/lipgloss"
@@ -59,8 +66,6 @@ func NewStyles(r *lipgloss.Renderer, theme content.Theme) Styles {
 	return Styles{
 		Doc: ns().Padding(1, 2),
 
-		// Tabs are width-equalised and centred at render time (view.go computes
-		// the longest label and applies .Width().Align(Center) on both styles).
 		Tab:       ns().Foreground(muted),
 		TabActive: ns().Foreground(bgDark).Background(accent).Bold(true),
 		TabsSep:   ns().Foreground(muted).Render(" │ "),

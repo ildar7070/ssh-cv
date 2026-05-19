@@ -3,19 +3,21 @@
 // Visitors land on a splash screen. After Enter, they navigate a tabbed app
 // whose tabs and contents are driven entirely by content.toml — the Model
 // itself only owns the mode (splash vs. app), the active tab index,
-// per-list selection indices, and the terminal size.
+// per-section selection indices, and the terminal size. Per-section
+// rendering, key handling, and emptiness checks live in
+// internal/tui/sections.
 //
 // Sub-views are pure render functions; they do not hold state.
 package tui
 
 import (
-	"math"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
+	"github.com/ildar7070/ssh-cv/internal/tui/sections"
 )
 
 // blinkInterval controls how often the splash CTA toggles between its
@@ -39,15 +41,15 @@ const (
 // Model is the root Bubble Tea model.
 type Model struct {
 	profile *content.Profile
-	styles  Styles
+	styles  sections.Styles
 
-	tabs []content.TabSpec // resolved at construction; only non-empty tabs
+	tabs []content.Section // resolved at construction; only non-empty sections
 
 	mode      mode
 	activeTab int // index into tabs
 
-	// Per-list selection. Keyed by TabID so we don't hardcode field names.
-	selection map[content.TabID]int
+	// Per-section selection. Keyed by Section.ID so we don't hardcode field names.
+	selection map[string]int
 
 	// splashBlink toggles every blinkInterval while in modeSplash, driving
 	// the "Press Enter to start" highlight pulse.
@@ -67,10 +69,10 @@ func New(p *content.Profile, r *lipgloss.Renderer) Model {
 	}
 	return Model{
 		profile:   p,
-		styles:    NewStyles(r, p.Theme),
-		tabs:      p.VisibleTabs(),
+		styles:    sections.NewStyles(r, p.Theme),
+		tabs:      p.VisibleSections(),
 		mode:      modeSplash,
-		selection: make(map[content.TabID]int),
+		selection: make(map[string]int),
 	}
 }
 
@@ -109,7 +111,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateApp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch key := msg.String(); key {
+	key := msg.String()
+
+	switch key {
 	case "esc":
 		return m, tea.Quit
 
@@ -118,74 +122,41 @@ func (m Model) updateApp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.activeTab < len(m.tabs)-1 {
 			m.activeTab++
 		}
+		return m, nil
 	case "shift+tab", "left", "h":
 		if m.activeTab > 0 {
 			m.activeTab--
 		}
+		return m, nil
+	}
 
-	// List navigation on list-based tabs.
-	case "up", "k":
-		m.moveSelection(-1)
-	case "down", "j":
-		m.moveSelection(+1)
-	case "home", "g":
-		m.setSelection(0)
-	case "end", "G":
-		m.setSelection(math.MaxInt)
-
-	default:
-		// Digit shortcuts 1..9 jump to the Nth visible tab.
-		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
-			idx := int(key[0] - '1')
-			if idx < len(m.tabs) {
-				m.activeTab = idx
-			}
+	// Digit shortcuts 1..9 jump to the Nth visible tab.
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+		idx := int(key[0] - '1')
+		if idx < len(m.tabs) {
+			m.activeTab = idx
 		}
+		return m, nil
+	}
+
+	// Anything else: ask the active section's renderer if it wants the key.
+	cur, ok := m.currentSection()
+	if !ok {
+		return m, nil
+	}
+	r, ok := sections.Get(cur.Type)
+	if !ok {
+		return m, nil
+	}
+	if newSel, handled := r.HandleKey(cur, m.selection[cur.ID], msg); handled {
+		m.selection[cur.ID] = newSel
 	}
 	return m, nil
 }
 
-func (m *Model) currentTab() content.TabID {
+func (m *Model) currentSection() (content.Section, bool) {
 	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
-		return ""
+		return content.Section{}, false
 	}
-	return m.tabs[m.activeTab].ID
-}
-
-func (m *Model) listLen() int {
-	switch m.currentTab() {
-	case content.TabCV:
-		return len(m.profile.CV)
-	case content.TabProjects:
-		return len(m.profile.Projects)
-	}
-	return 0
-}
-
-func (m *Model) moveSelection(delta int) {
-	id := m.currentTab()
-	n := m.listLen()
-	if n == 0 {
-		return
-	}
-	m.selection[id] = clamp(m.selection[id]+delta, 0, n-1)
-}
-
-func (m *Model) setSelection(v int) {
-	id := m.currentTab()
-	n := m.listLen()
-	if n == 0 {
-		return
-	}
-	m.selection[id] = clamp(v, 0, n-1)
-}
-
-func clamp(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
+	return m.tabs[m.activeTab], true
 }

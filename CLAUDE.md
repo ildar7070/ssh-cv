@@ -14,8 +14,9 @@ No real shell is exposed — the SSH session runs one Bubble Tea program and
 disconnects when the visitor quits.
 
 Visitor flow: connect → splash screen → press Enter → tabbed app whose tabs,
-contents, and theme all come from `content.toml`. List-based tabs (CV,
-Projects) use a 30/70 list/detail layout.
+contents, and theme all come from `content.toml`. Each tab is a `[[sections]]`
+block whose `type` selects a pluggable renderer (`text`, `list`, `links`, …).
+List-style sections use a 30/70 list/detail layout.
 
 ## Commands
 
@@ -51,7 +52,7 @@ go test ./internal/tui -run TestName
 
 ## Architecture
 
-Three packages:
+Four packages:
 
 - **`cmd/ssh-cv`** — entrypoint. Wires Wish middleware (`bubbletea`,
   `activeterm`, `logging`), reads `SSHCV_*` env vars, loads content, sets
@@ -60,50 +61,64 @@ Three packages:
   skips authentication when both `PasswordHandler` and `PublicKeyHandler` are
   nil. Adding any auth handler will silently break anonymous access.
 
-- **`internal/content`** — loads `content.toml` into a `Profile` struct. The
-  schema is entirely data-driven:
+- **`internal/content`** — loads `content.toml` into a `Profile`. The schema
+  is intentionally generic:
   - `Splash` (title, CTA) — defaults fall back from `name`.
   - `Theme` (six optional hex colors).
-  - `[]TabSpec` — which built-in tab renderers appear and in what order.
-    Defaults to all four (start, cv, projects, contact).
-  - `[]ContactLink` — contact rows. New platforms = one TOML block, no code.
-  - `Profile.Validate()` produces descriptive errors for unknown tab IDs,
-    duplicate tabs, missing name, and malformed hex colors.
-  - `Profile.VisibleTabs()` filters out tabs whose backing section is empty.
+  - `[]Section` — ordered tabs. Each section has `id`, `type`, `label` plus
+    optional `lines` (text) or `items` (list/links). Renderers decide which
+    fields they consume; unknown fields are ignored.
+  - `Profile.Validate()` produces descriptive errors for missing name, empty
+    section IDs, duplicate section IDs, unknown section types, and malformed
+    hex colors. Type-specific validation is delegated to the
+    `SectionValidator` wired in by `internal/tui/sections`.
+  - `Profile.VisibleSections()` filters out sections whose backing data is
+    empty (judged by the registered renderer).
 
   Content is loaded once at startup; restart the process after editing
-  `content.toml`.
+  `content.toml`. `content` does **not** import the TUI — the renderer
+  registry hooks itself in via `content.SetSectionValidator` from an
+  `init()` in `internal/tui/sections`.
 
-- **`internal/tui`** — Bubble Tea program. Split by concern:
-  - `model.go` — root Model. `tabs` is resolved from `Profile.VisibleTabs()`
-    at construction. Per-list selection is a `map[TabID]int`, not fixed
-    struct fields. Digit shortcuts `1`–`9` dynamically map to the Nth visible
-    tab. `bodyView` dispatches via a switch on `currentTab()`.
-  - `view.go` — render functions. `View()` dispatches to splash or app;
-    `appView` composes header + body + footer; `listDetailView` is the
-    generic 30/70 layout reused by CV and Projects. `renderDetailBlock`
-    is a shared helper for both CV and project detail panes. Magic
-    numbers live as named constants at the top.
-  - `styles.go` — Lipgloss styles bound to a per-session renderer **and** to
-    `content.Theme`. Empty theme fields fall back to the built-in palette
-    (constants at the top of the file).
+- **`internal/tui/sections`** — pluggable renderer registry. One file per
+  section type (`text.go`, `list.go`, `links.go`); each `init()` calls
+  `Register`. The `Renderer` interface exposes `Type`, `Validate`,
+  `IsEmpty`, `Render`, `FooterHint`, and `HandleKey`. Shared layout
+  primitives (`renderDetailBlock`, `place`, `clamp`) live in `detail.go`.
+  `styles.go` holds the Lipgloss style set (bound to a per-session renderer
+  + `content.Theme`).
+
+- **`internal/tui`** — thin Bubble Tea shell:
+  - `model.go` — root Model. `tabs` is `[]content.Section` resolved from
+    `Profile.VisibleSections()`. Per-section selection is a
+    `map[string]int` keyed by Section.ID. App-level keys (quit, tab
+    switching, digit shortcuts) live here; section-local keys go through
+    the active renderer's `HandleKey`.
+  - `view.go` — splash + app shell (header / body / footer). `bodyView`
+    looks up the renderer with `sections.Get(currentSection.Type)` and
+    delegates. `footerView` pulls the hint from the renderer, falling back
+    to a default.
 
 Visitor flow: SSH connect → Wish accepts (no auth) → `activeterm` middleware
 rejects clients without a PTY → `bubbletea` middleware starts a fresh Model
 per session → splash → Enter → tabbed app → visitor presses q/esc to
 disconnect.
 
-## Adding a new built-in tab
+## Adding a new section type
 
-This is rare — the framework's expressivity comes from `content.toml`, not
-from new tabs. But if you must:
+The framework's expressivity comes from `content.toml`, but new renderer
+types are easy to plug in:
 
-1. Add a new `TabID` constant in `internal/content/content.go` and append it
-   to `BuiltinTabs`.
-2. Add a default label in `defaultTabLabel`.
-3. Teach `HasContent` how to tell if its section is non-empty.
-4. Add a case in `internal/tui/view.go`'s `bodyView` and a renderer.
-5. Update `content.example.toml` with documentation for the new section.
+1. Add a new file in `internal/tui/sections/`, e.g. `table.go`.
+2. Implement the `Renderer` interface (`Type`, `Validate`, `IsEmpty`,
+   `Render`, `FooterHint`, `HandleKey`).
+3. Call `Register(yourRenderer{})` from an `init()` function.
+4. If the new type needs fields the existing `Section`/`Item` structs don't
+   carry, add them as optional fields in `internal/content/content.go`.
+   Keep the additions opt-in; existing renderers must keep working.
+5. Add a documented example block in `content.example.toml`.
+
+Nothing in the core TUI needs to change.
 
 ## Content
 

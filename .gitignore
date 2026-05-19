@@ -15,6 +15,9 @@
 # Operator-supplied content; the framework ships content.example.toml.
 /content.toml
 
+# Maintainer notes for Claude Code; not part of the published framework.
+/CLAUDE.md
+
 # Editor
 .vscode/
 .idea/

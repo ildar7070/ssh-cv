@@ -92,7 +92,9 @@ func main() {
 	log.Info("shutting down")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
-	_ = s.Shutdown(shutdownCtx)
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		log.Warn("shutdown", "err", err)
+	}
 }
 
 func handler(p *content.Profile) bubbletea.Handler {

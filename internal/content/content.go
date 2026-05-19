@@ -1,8 +1,12 @@
 // Package content loads the personal profile shown to SSH visitors.
 //
-// The profile is parsed from a TOML file. Everything except `name` is
-// optional — leaving a section out hides the corresponding tab in the
-// TUI. See content.example.toml for a fully documented template.
+// The profile is parsed from a TOML file. Top-level keys describe the
+// person (name, tagline, splash, theme); the body is an ordered list of
+// [[sections]] — one section per visible tab. Each section names a
+// renderer type ("text", "list", "links", …) registered in
+// internal/tui/sections.
+//
+// See content.example.toml for a fully documented template.
 package content
 
 import (
@@ -10,36 +14,36 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	toml "github.com/pelletier/go-toml/v2"
 )
 
-// TabID is a stable identifier for a built-in tab renderer.
-type TabID string
+// SectionValidator is implemented by renderer registries that want to
+// validate section payloads at load time. The TUI's section registry
+// registers itself via SetSectionValidator; content stays decoupled from
+// the renderer package to avoid an import cycle.
+type SectionValidator interface {
+	Validate(s Section) error
+	Known(typ string) bool
+	IsEmpty(s Section) bool
+}
 
-const (
-	TabStart    TabID = "start"
-	TabCV       TabID = "cv"
-	TabProjects TabID = "projects"
-	TabContact  TabID = "contact"
-)
+var sectionValidator SectionValidator
 
-// BuiltinTabs lists the tab IDs the TUI knows how to render. Used both for
-// validation and as the implicit default when no [[tabs]] block is given.
-var BuiltinTabs = []TabID{TabStart, TabCV, TabProjects, TabContact}
+// SetSectionValidator wires in a renderer registry. Called from the TUI
+// package's init().
+func SetSectionValidator(v SectionValidator) { sectionValidator = v }
 
 // Profile is the parsed content.toml file.
 type Profile struct {
 	Name    string `toml:"name"`
 	Tagline string `toml:"tagline"`
 
-	Splash  Splash    `toml:"splash"`
-	About   About     `toml:"about"`
-	Theme   Theme     `toml:"theme"`
-	Tabs    []TabSpec `toml:"tabs"`
-	CV      []CVEntry `toml:"cv"`
-	Projects []Project `toml:"projects"`
-	Contact []ContactLink `toml:"contact"`
+	Splash   Splash    `toml:"splash"`
+	Theme    Theme     `toml:"theme"`
+	Sections []Section `toml:"sections"`
 }
 
 // Splash configures the entry screen shown before a visitor presses Enter.
@@ -47,10 +51,6 @@ type Profile struct {
 type Splash struct {
 	Title string `toml:"title"`
 	CTA   string `toml:"cta"`
-}
-
-type About struct {
-	Lines []string `toml:"lines"`
 }
 
 // Theme overrides the default Lipgloss palette. All fields are optional;
@@ -64,31 +64,33 @@ type Theme struct {
 	Selection  string `toml:"selection"`
 }
 
-// TabSpec controls which built-in tabs appear in the header and in what order.
-// Label is optional — when empty, the TUI uses a sensible default per ID.
-type TabSpec struct {
-	ID    TabID  `toml:"id"`
+// Section is one tab in the TUI. The renderer addressed by Type decides
+// which of the optional fields it consumes; unused fields are simply
+// ignored. New section types are added by registering a renderer, not by
+// extending this struct unless the new shape genuinely doesn't fit.
+type Section struct {
+	ID    string `toml:"id"`
+	Type  string `toml:"type"`
 	Label string `toml:"label"`
+
+	// Text-style sections: free-form paragraph lines.
+	Lines []string `toml:"lines"`
+
+	// List-style and links-style sections: ordered rows.
+	Items []Item `toml:"items"`
 }
 
-type CVEntry struct {
-	Role    string   `toml:"role"`
-	Company string   `toml:"company"`
-	Period  string   `toml:"period"`
-	Summary string   `toml:"summary"`
-	Bullets []string `toml:"bullets"`
-}
+// Item is the row shape used by list-style and links-style sections.
+// Renderers pick the fields that apply to their layout.
+type Item struct {
+	// list-style fields
+	Title    string   `toml:"title"`
+	Subtitle string   `toml:"subtitle"`
+	Meta     string   `toml:"meta"`
+	Summary  string   `toml:"summary"`
+	Bullets  []string `toml:"bullets"`
 
-type Project struct {
-	Name    string   `toml:"name"`
-	Tagline string   `toml:"tagline"`
-	URL     string   `toml:"url"`
-	Details []string `toml:"details"`
-}
-
-// ContactLink is one row on the contact page. Value is the URL or address;
-// Label is the short tag shown to the left ("email", "github", ...).
-type ContactLink struct {
+	// links-style fields
 	Label string `toml:"label"`
 	Value string `toml:"value"`
 }
@@ -117,48 +119,51 @@ func (p *Profile) applyDefaults() {
 	if p.Splash.CTA == "" {
 		p.Splash.CTA = "Press Enter to start"
 	}
-	if len(p.Tabs) == 0 {
-		p.Tabs = make([]TabSpec, 0, len(BuiltinTabs))
-		for _, id := range BuiltinTabs {
-			p.Tabs = append(p.Tabs, TabSpec{ID: id})
-		}
-	}
-	for i, t := range p.Tabs {
-		if t.Label == "" {
-			p.Tabs[i].Label = defaultTabLabel(t.ID)
+	for i := range p.Sections {
+		if p.Sections[i].Label == "" {
+			p.Sections[i].Label = defaultLabel(p.Sections[i].ID)
 		}
 	}
 }
 
-func defaultTabLabel(id TabID) string {
-	switch id {
-	case TabStart:
-		return "Start"
-	case TabCV:
-		return "CV"
-	case TabProjects:
-		return "Projects"
-	case TabContact:
-		return "Contact"
+func defaultLabel(id string) string {
+	if id == "" {
+		return ""
 	}
-	return string(id)
+	r, size := utf8.DecodeRuneInString(id)
+	if r == utf8.RuneError {
+		return id
+	}
+	return string(unicode.ToUpper(r)) + id[size:]
 }
 
 // Validate returns a descriptive error if the profile is missing required
-// data or references unknown tab IDs / invalid colors.
+// data or references unknown section types / invalid colors.
 func (p *Profile) Validate() error {
 	if strings.TrimSpace(p.Name) == "" {
 		return fmt.Errorf("name is required")
 	}
-	seen := make(map[TabID]bool, len(p.Tabs))
-	for _, t := range p.Tabs {
-		if !isBuiltinTab(t.ID) {
-			return fmt.Errorf("tab %q is not a built-in tab (allowed: %v)", t.ID, BuiltinTabs)
+	if len(p.Sections) > 0 && sectionValidator == nil {
+		return fmt.Errorf("no section validator registered — import internal/tui/sections for its init() to wire one in")
+	}
+	seen := make(map[string]bool, len(p.Sections))
+	for i, s := range p.Sections {
+		if strings.TrimSpace(s.ID) == "" {
+			return fmt.Errorf("sections[%d]: id is required", i)
 		}
-		if seen[t.ID] {
-			return fmt.Errorf("tab %q listed more than once", t.ID)
+		if strings.TrimSpace(s.Type) == "" {
+			return fmt.Errorf("sections[%d] (%q): type is required", i, s.ID)
 		}
-		seen[t.ID] = true
+		if seen[s.ID] {
+			return fmt.Errorf("section id %q listed more than once", s.ID)
+		}
+		seen[s.ID] = true
+		if !sectionValidator.Known(s.Type) {
+			return fmt.Errorf("section %q: unknown type %q", s.ID, s.Type)
+		}
+		if err := sectionValidator.Validate(s); err != nil {
+			return fmt.Errorf("section %q: %w", s.ID, err)
+		}
 	}
 	for field, color := range map[string]string{
 		"accent":     p.Theme.Accent,
@@ -175,41 +180,18 @@ func (p *Profile) Validate() error {
 	return nil
 }
 
-func isBuiltinTab(id TabID) bool {
-	for _, b := range BuiltinTabs {
-		if id == b {
-			return true
-		}
-	}
-	return false
-}
-
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
-// HasContent reports whether the given tab has anything meaningful to render.
-// Used by the TUI to hide empty tabs from the header.
-func (p *Profile) HasContent(id TabID) bool {
-	switch id {
-	case TabStart:
-		return strings.TrimSpace(p.Name) != "" || strings.TrimSpace(p.Tagline) != "" || len(p.About.Lines) > 0
-	case TabCV:
-		return len(p.CV) > 0
-	case TabProjects:
-		return len(p.Projects) > 0
-	case TabContact:
-		return len(p.Contact) > 0
-	}
-	return false
-}
-
-// VisibleTabs returns the tabs the TUI should render — i.e. each declared
-// tab whose underlying section has content.
-func (p *Profile) VisibleTabs() []TabSpec {
-	out := make([]TabSpec, 0, len(p.Tabs))
-	for _, t := range p.Tabs {
-		if p.HasContent(t.ID) {
-			out = append(out, t)
+// VisibleSections returns sections whose backing data is non-empty, as
+// judged by the registered SectionValidator. If no validator is wired in
+// (tests, library use), every section is considered visible.
+func (p *Profile) VisibleSections() []Section {
+	out := make([]Section, 0, len(p.Sections))
+	for _, s := range p.Sections {
+		if sectionValidator != nil && sectionValidator.IsEmpty(s) {
+			continue
 		}
+		out = append(out, s)
 	}
 	return out
 }

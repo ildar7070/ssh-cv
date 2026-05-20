@@ -4,8 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
@@ -52,16 +51,16 @@ func TestList_HandleKey(t *testing.T) {
 	r := mustRenderer(t, "list")
 	s := content.Section{Type: "list", Items: []content.Item{{Title: "a"}, {Title: "b"}, {Title: "c"}}}
 
-	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyDown}); !handled || got != 1 {
+	if got, handled := r.HandleKey(s, 0, tea.KeyPressMsg{Code: tea.KeyDown}); !handled || got != 1 {
 		t.Errorf("down from 0: got %d handled=%v, want 1 true", got, handled)
 	}
-	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyUp}); !handled || got != 0 {
+	if got, handled := r.HandleKey(s, 0, tea.KeyPressMsg{Code: tea.KeyUp}); !handled || got != 0 {
 		t.Errorf("up at 0: got %d handled=%v, want 0 true", got, handled)
 	}
-	if got, handled := r.HandleKey(s, 0, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")}); !handled || got != 2 {
+	if got, handled := r.HandleKey(s, 0, tea.KeyPressMsg{Code: 'G', Text: "G"}); !handled || got != 2 {
 		t.Errorf("end: got %d handled=%v, want 2 true", got, handled)
 	}
-	if _, handled := r.HandleKey(s, 1, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}); handled {
+	if _, handled := r.HandleKey(s, 1, tea.KeyPressMsg{Code: 'x', Text: "x"}); handled {
 		t.Error("unrelated key should not be handled")
 	}
 }
@@ -104,7 +103,7 @@ func TestExampleTOML_ParsesAndValidates(t *testing.T) {
 
 func TestRender_DoesNotPanic(t *testing.T) {
 	// Smoke test: each renderer should produce something for a populated section.
-	styles := NewStyles(lipgloss.DefaultRenderer(), content.Theme{})
+	styles := NewStyles(content.Theme{})
 	profile := &content.Profile{Name: "Test", Tagline: "tag"}
 	ctx := RenderContext{Profile: profile, Styles: styles, Width: 80, Height: 20}
 

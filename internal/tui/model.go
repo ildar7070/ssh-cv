@@ -13,8 +13,7 @@ package tui
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 	"github.com/ildar7070/ssh-cv/internal/tui/sections"
@@ -59,17 +58,13 @@ type Model struct {
 	height int
 }
 
-// New builds a Model. The renderer must come from
-// bubbletea.MakeRenderer(sess) so color styling respects the SSH client's
-// terminal — passing nil falls back to lipgloss.DefaultRenderer which in a
-// distroless container reports no color support.
-func New(p *content.Profile, r *lipgloss.Renderer) Model {
-	if r == nil {
-		r = lipgloss.DefaultRenderer()
-	}
+// New builds a Model. Under Bubble Tea v2 the program downsamples colors to
+// the SSH client's terminal at render time, so styles need no per-session
+// renderer.
+func New(p *content.Profile) Model {
 	return Model{
 		profile:   p,
-		styles:    sections.NewStyles(r, p.Theme),
+		styles:    sections.NewStyles(p.Theme),
 		tabs:      p.VisibleSections(),
 		mode:      modeSplash,
 		selection: make(map[string]int),
@@ -91,7 +86,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.splashBlink = !m.splashBlink
 		return m, blinkCmd()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Quit works everywhere.
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -100,7 +95,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.mode == modeSplash {
 			switch msg.String() {
-			case "enter", " ":
+			case "enter", "space":
 				m.mode = modeApp
 			}
 			return m, nil
@@ -111,7 +106,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) updateApp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updateApp(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	switch key {

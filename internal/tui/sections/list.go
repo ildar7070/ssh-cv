@@ -5,8 +5,8 @@ import (
 	"math"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
@@ -64,7 +64,7 @@ func (listRenderer) FooterHint() string {
 	return "↑/↓ navigate · tab / 1-9 switch · q quit"
 }
 
-func (listRenderer) HandleKey(s content.Section, sel int, msg tea.KeyMsg) (int, bool) {
+func (listRenderer) HandleKey(s content.Section, sel int, msg tea.KeyPressMsg) (int, bool) {
 	n := len(s.Items)
 	if n == 0 {
 		return sel, false

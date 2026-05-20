@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/tui/sections"
 )
@@ -22,7 +23,11 @@ const (
 	defaultFooterHint = "tab / 1-9 switch · q quit"
 )
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	return tea.View{Content: m.content(), AltScreen: true}
+}
+
+func (m Model) content() string {
 	if m.width < minWidth || m.height < minHeight {
 		return "ssh-cv — resize your terminal (min 40×12)"
 	}

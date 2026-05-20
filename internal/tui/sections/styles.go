@@ -8,7 +8,7 @@
 package sections
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
@@ -23,11 +23,9 @@ const (
 	defaultSelection  = "#1f2a1f"
 )
 
-// Styles holds every Lipgloss style used by the TUI. It must be built from a
-// per-session *lipgloss.Renderer (see NewStyles) so the color profile reflects
-// the SSH client's terminal capabilities. Using the global default renderer
-// would inherit the server process's environment — in our case a distroless
-// container with no TERM set, which silently strips all color.
+// Styles holds every Lipgloss style used by the TUI. Styles carry no color
+// profile of their own; under Bubble Tea v2 the program downsamples colors to
+// the client terminal's capabilities at render time.
 type Styles struct {
 	Doc lipgloss.Style
 
@@ -51,9 +49,9 @@ type Styles struct {
 	SplashHintHighlight lipgloss.Style
 }
 
-// NewStyles builds the style set bound to the given renderer and theme.
-// Empty theme fields fall back to the built-in palette.
-func NewStyles(r *lipgloss.Renderer, theme content.Theme) Styles {
+// NewStyles builds the style set for the given theme. Empty theme fields
+// fall back to the built-in palette.
+func NewStyles(theme content.Theme) Styles {
 	accent := lipgloss.Color(orDefault(theme.Accent, defaultAccent))
 	accent2 := lipgloss.Color(orDefault(theme.Accent2, defaultAccent2))
 	fg := lipgloss.Color(orDefault(theme.Foreground, defaultForeground))
@@ -61,7 +59,7 @@ func NewStyles(r *lipgloss.Renderer, theme content.Theme) Styles {
 	bgDark := lipgloss.Color(orDefault(theme.Background, defaultBackground))
 	bgSelect := lipgloss.Color(orDefault(theme.Selection, defaultSelection))
 
-	ns := r.NewStyle
+	ns := lipgloss.NewStyle
 
 	return Styles{
 		Doc: ns().Padding(1, 2),

@@ -3,8 +3,8 @@ package sections
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
@@ -53,7 +53,7 @@ func (textRenderer) Render(s content.Section, ctx RenderContext) string {
 
 func (textRenderer) FooterHint() string { return "" }
 
-func (textRenderer) HandleKey(_ content.Section, sel int, _ tea.KeyMsg) (int, bool) {
+func (textRenderer) HandleKey(_ content.Section, sel int, _ tea.KeyPressMsg) (int, bool) {
 	return sel, false
 }
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
@@ -55,7 +55,7 @@ func (linksRenderer) Render(s content.Section, ctx RenderContext) string {
 
 func (linksRenderer) FooterHint() string { return "" }
 
-func (linksRenderer) HandleKey(_ content.Section, sel int, _ tea.KeyMsg) (int, bool) {
+func (linksRenderer) HandleKey(_ content.Section, sel int, _ tea.KeyPressMsg) (int, bool) {
 	return sel, false
 }
 

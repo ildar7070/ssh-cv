@@ -22,9 +22,14 @@ COPY --from=build /out/ssh-cv /app/ssh-cv
 # /app/content.toml (see compose.yaml / README). Running without it fails
 # fast rather than silently serving the example profile.
 COPY --from=data --chown=65532:65532 /data /data
+# Host key lives in a SUBDIRECTORY of the data volume, not the volume root.
+# keygen chmods the key's parent dir to 0700 on first run; when /data is a
+# bind/PVC mount it is owned by root, so chmod by the nonroot user fails
+# ("operation not permitted"). Pointing at /data/keys/ lets keygen create
+# and own that subdir itself, leaving the mount root untouched.
 ENV SSHCV_HOST=0.0.0.0 \
     SSHCV_PORT=2222 \
-    SSHCV_HOST_KEY=/data/host_key \
+    SSHCV_HOST_KEY=/data/keys/host_key \
     SSHCV_CONTENT=/app/content.toml
 EXPOSE 2222
 USER nonroot:nonroot

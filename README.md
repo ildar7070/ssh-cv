@@ -105,7 +105,7 @@ lines = ["Available for consulting."]
 |-------------------|-------------------------|------------------------------------------|
 | `SSHCV_HOST`      | `0.0.0.0`               | bind address                             |
 | `SSHCV_PORT`      | `2222`                  | bind port                                |
-| `SSHCV_HOST_KEY`  | `/data/host_key`        | ed25519 host key (generated on first run)|
+| `SSHCV_HOST_KEY`  | `/data/keys/host_key`   | ed25519 host key (generated on first run)|
 | `SSHCV_CONTENT`   | `/app/content.toml`     | path to content TOML                     |
 | `SSHCV_LOG_LEVEL` | `info`                  | `debug`, `info`, `warn`, `error`         |
 

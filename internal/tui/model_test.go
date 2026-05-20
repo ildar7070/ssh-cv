@@ -44,6 +44,9 @@ func keyMsg(k string) tea.KeyPressMsg {
 	case "esc":
 		return tea.KeyPressMsg{Code: tea.KeyEsc}
 	}
+	if k == "" {
+		return tea.KeyPressMsg{}
+	}
 	r := []rune(k)[0]
 	return tea.KeyPressMsg{Code: r, Text: k}
 }

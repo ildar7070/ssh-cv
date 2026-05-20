@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 	_ "github.com/ildar7070/ssh-cv/internal/tui/sections"
@@ -29,22 +29,23 @@ func newTestProfile() *content.Profile {
 	}
 }
 
-func keyMsg(k string) tea.KeyMsg {
+func keyMsg(k string) tea.KeyPressMsg {
 	switch k {
 	case "tab":
-		return tea.KeyMsg{Type: tea.KeyTab}
+		return tea.KeyPressMsg{Code: tea.KeyTab}
 	case "shift+tab":
-		return tea.KeyMsg{Type: tea.KeyShiftTab}
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 	case "enter":
-		return tea.KeyMsg{Type: tea.KeyEnter}
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
 	case "up":
-		return tea.KeyMsg{Type: tea.KeyUp}
+		return tea.KeyPressMsg{Code: tea.KeyUp}
 	case "down":
-		return tea.KeyMsg{Type: tea.KeyDown}
+		return tea.KeyPressMsg{Code: tea.KeyDown}
 	case "esc":
-		return tea.KeyMsg{Type: tea.KeyEscape}
+		return tea.KeyPressMsg{Code: tea.KeyEsc}
 	}
-	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
+	r := []rune(k)[0]
+	return tea.KeyPressMsg{Code: r, Text: k}
 }
 
 func step(m Model, k string) Model {
@@ -53,7 +54,7 @@ func step(m Model, k string) Model {
 }
 
 func TestSplashToApp_Enter(t *testing.T) {
-	m := New(newTestProfile(), nil)
+	m := New(newTestProfile())
 	if m.mode != modeSplash {
 		t.Fatalf("initial mode = %v, want splash", m.mode)
 	}
@@ -64,7 +65,7 @@ func TestSplashToApp_Enter(t *testing.T) {
 }
 
 func TestTabSwitching_TabKeyAndDigits(t *testing.T) {
-	m := New(newTestProfile(), nil)
+	m := New(newTestProfile())
 	m = step(m, "enter")
 
 	m = step(m, "tab")
@@ -82,7 +83,7 @@ func TestTabSwitching_TabKeyAndDigits(t *testing.T) {
 }
 
 func TestTabSwitching_NoWrap(t *testing.T) {
-	m := New(newTestProfile(), nil)
+	m := New(newTestProfile())
 	m = step(m, "enter")
 
 	m = step(m, "shift+tab")
@@ -99,7 +100,7 @@ func TestTabSwitching_NoWrap(t *testing.T) {
 }
 
 func TestSelectionBounds(t *testing.T) {
-	m := New(newTestProfile(), nil)
+	m := New(newTestProfile())
 	m = step(m, "enter")
 	m = step(m, "2") // experience tab (3 items)
 
@@ -134,7 +135,7 @@ func TestEmptyTabsHidden(t *testing.T) {
 		},
 	}
 
-	m := New(p, nil)
+	m := New(p)
 	if len(m.tabs) != 1 {
 		t.Fatalf("visible tabs = %d (%+v), want 1", len(m.tabs), m.tabs)
 	}
@@ -144,7 +145,7 @@ func TestEmptyTabsHidden(t *testing.T) {
 }
 
 func TestQuit_Q(t *testing.T) {
-	m := New(newTestProfile(), nil)
+	m := New(newTestProfile())
 	_, cmd := m.Update(keyMsg("q"))
 	if cmd == nil {
 		t.Fatalf("expected tea.Quit command, got nil")

@@ -134,7 +134,7 @@ make up      # docker compose up -d --build
 make ssh     # ssh -p 2222 localhost
 ```
 
-Requires Go 1.23+ for local builds, or just Docker for `make up`. Builds inject
+Requires Go 1.25+ for local builds, or just Docker for `make up`. Builds inject
 the version via ldflags (from `git describe`), so `ssh-cv --version` reports the
 running build. Released images pin their base layers by digest for reproducible,
 multi-arch (`amd64`/`arm64`) builds.

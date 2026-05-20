@@ -3,7 +3,7 @@ package sections
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // detailBlock is the shared layout used by list-style detail panes.

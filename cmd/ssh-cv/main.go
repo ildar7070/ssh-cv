@@ -24,14 +24,13 @@ import (
 	"syscall"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/log/v2"
+	"charm.land/wish/v2"
+	"charm.land/wish/v2/activeterm"
+	"charm.land/wish/v2/bubbletea"
+	"charm.land/wish/v2/logging"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	"github.com/charmbracelet/wish/activeterm"
-	"github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/logging"
-	"github.com/muesli/termenv"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 	"github.com/ildar7070/ssh-cv/internal/tui"
@@ -75,12 +74,7 @@ func main() {
 		wish.WithHostKeyPath(hostKey),
 		wish.WithIdleTimeout(idleTimeout),
 		wish.WithMiddleware(
-			// MiddlewareWithColorProfile sets the MINIMUM color profile the
-			// renderer will use. The default `Middleware` pins it to Ascii
-			// (no colors), which silently strips all Foreground/Background
-			// styling — passing TrueColor lets the client's terminal use
-			// its native color depth.
-			bubbletea.MiddlewareWithColorProfile(handler(profile), termenv.TrueColor),
+			bubbletea.Middleware(handler(profile)),
 			activeterm.Middleware(),
 			logging.Middleware(),
 		),
@@ -115,12 +109,7 @@ func handler(p *content.Profile) bubbletea.Handler {
 		if !active {
 			return nil, nil
 		}
-		// MakeRenderer reads the client's TERM and builds a Lipgloss
-		// renderer with the correct color profile for THIS session. The
-		// global default renderer would inherit the server process's env
-		// (no TERM in distroless → Ascii → all colors stripped).
-		r := bubbletea.MakeRenderer(sess)
-		return tui.New(p, r), []tea.ProgramOption{tea.WithAltScreen()}
+		return tui.New(p), nil
 	}
 }
 

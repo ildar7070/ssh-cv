@@ -3,7 +3,7 @@ package sections
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/ildar7070/ssh-cv/internal/content"
 )
@@ -45,7 +45,7 @@ type Renderer interface {
 	// HandleKey lets the renderer consume list-style key events. Return
 	// (newSelected, true) to indicate the key was handled. Renderers
 	// that have no selection (text, links) should return (selected, false).
-	HandleKey(s content.Section, selected int, msg tea.KeyMsg) (int, bool)
+	HandleKey(s content.Section, selected int, msg tea.KeyPressMsg) (int, bool)
 }
 
 var registry = map[string]Renderer{}

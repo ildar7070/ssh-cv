@@ -10,6 +10,7 @@
 package content
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -98,6 +99,9 @@ type Item struct {
 // Load reads, parses, and validates the profile at path.
 func Load(path string) (*Profile, error) {
 	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("no content file at %s — mount your content.toml there (see README/compose.yaml): %w", path, err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}

@@ -35,6 +35,10 @@ Built with Go, [Charm Wish](https://github.com/charmbracelet/wish),
    ssh -p 2222 localhost
    ```
 
+The image ships no content of its own — mounting your `content.toml` at
+`/app/content.toml` is required. Start it without one and the server exits
+immediately with a message telling you what's missing.
+
 Press <kbd>Enter</kbd> on the splash, <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> or the
 digit keys to switch tabs, <kbd>↑</kbd>/<kbd>↓</kbd> to navigate lists,
 <kbd>q</kbd> to quit.

@@ -1,6 +1,7 @@
 package content
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +60,19 @@ func TestLoad_MinimalProfile_AppliesDefaults(t *testing.T) {
 	}
 	if len(p.Sections) != 0 {
 		t.Errorf("minimal profile should have no sections, got %d", len(p.Sections))
+	}
+}
+
+func TestLoad_MissingFile_GivesMountHint(t *testing.T) {
+	_, err := Load(filepath.Join(t.TempDir(), "does-not-exist.toml"))
+	if err == nil {
+		t.Fatal("expected error for missing content file")
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("error should wrap os.ErrNotExist, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "mount your content.toml") {
+		t.Errorf("error should hint at mounting, got %v", err)
 	}
 }
 

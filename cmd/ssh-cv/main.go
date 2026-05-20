@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -36,12 +37,23 @@ import (
 	"github.com/ildar7070/ssh-cv/internal/tui"
 )
 
+// version is set at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 const (
 	idleTimeout     = 5 * time.Minute
 	shutdownTimeout = 10 * time.Second
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "-v", "--version", "version":
+			fmt.Println("ssh-cv", version)
+			return
+		}
+	}
+
 	configureLogging()
 
 	host := envDefault("SSHCV_HOST", "0.0.0.0")

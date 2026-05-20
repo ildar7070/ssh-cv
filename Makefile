@@ -11,8 +11,10 @@ content.toml:
 run: content
 	go run ./cmd/ssh-cv
 
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
 build:
-	go build -o bin/ssh-cv ./cmd/ssh-cv
+	go build -ldflags="-X main.version=$(VERSION)" -o bin/ssh-cv ./cmd/ssh-cv
 
 tidy:
 	go mod tidy

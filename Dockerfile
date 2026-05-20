@@ -18,9 +18,9 @@ RUN mkdir -p /data && chown 65532:65532 /data
 FROM gcr.io/distroless/static-debian12@sha256:d093aa3e30dbadd3efe1310db061a14da60299baff8450a17fe0ccc514a16639
 WORKDIR /app
 COPY --from=build /out/ssh-cv /app/ssh-cv
-# Ship the example content as the default. Operators override by mounting
-# their own file at /app/content.toml (see compose.yaml / README).
-COPY content.example.toml /app/content.toml
+# No content is baked in: operators MUST mount their own content.toml at
+# /app/content.toml (see compose.yaml / README). Running without it fails
+# fast rather than silently serving the example profile.
 COPY --from=data --chown=65532:65532 /data /data
 ENV SSHCV_HOST=0.0.0.0 \
     SSHCV_PORT=2222 \

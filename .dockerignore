@@ -17,7 +17,7 @@ CLAUDE.md
 .env
 .env.local
 
-# Operator-supplied content; the image bakes in content.example.toml.
+# Operator-supplied content; never baked into the image (must be mounted).
 content.toml
 
 # Editor / OS cruft.

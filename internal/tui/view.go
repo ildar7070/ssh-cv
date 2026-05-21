@@ -20,7 +20,7 @@ const (
 	// Padding on each side of the longest tab label.
 	tabCellPadding = 2
 
-	defaultFooterHint = "tab / 1-9 switch · t theme · q quit"
+	defaultFooterHint = "←/→ switch tab · t ◑ · q quit"
 )
 
 func (m Model) View() tea.View {

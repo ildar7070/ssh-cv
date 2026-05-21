@@ -54,15 +54,45 @@ type Splash struct {
 	CTA   string `toml:"cta"`
 }
 
-// Theme overrides the default Lipgloss palette. All fields are optional;
-// empty values keep the built-in defaults.
-type Theme struct {
+// Palette is one set of Lipgloss colors. All fields are optional; empty
+// values fall back to the built-in defaults in internal/tui/sections.
+type Palette struct {
 	Accent     string `toml:"accent"`
 	Accent2    string `toml:"accent2"`
 	Foreground string `toml:"foreground"`
 	Muted      string `toml:"muted"`
 	Background string `toml:"background"`
 	Selection  string `toml:"selection"`
+}
+
+// Theme holds the dark and light palettes. For backward compatibility, the
+// flat color keys written directly under [theme] are read into the embedded
+// Palette and treated as the dark palette. Explicit [theme.dark] and
+// [theme.light] sub-tables take precedence over the flat keys.
+//
+// Resolution (see ResolvedThemes):
+//   - dark  = [theme.dark] if set, else flat [theme] keys, else built-in dark
+//   - light = [theme.light] if set, else built-in light
+type Theme struct {
+	Palette          // flat keys under [theme]; legacy = dark palette
+	Dark    *Palette `toml:"dark"`
+	Light   *Palette `toml:"light"`
+}
+
+// ResolvedThemes returns the dark and light palettes a visitor toggles
+// between. Empty palette fields are left empty here; the styles layer
+// applies the built-in per-mode defaults. The light palette is the empty
+// Palette when no [theme.light] is configured, signalling the styles layer
+// to use its built-in light defaults.
+func (t Theme) ResolvedThemes() (dark, light Palette) {
+	dark = t.Palette
+	if t.Dark != nil {
+		dark = *t.Dark
+	}
+	if t.Light != nil {
+		light = *t.Light
+	}
+	return dark, light
 }
 
 // Section is one tab in the TUI. The renderer addressed by Type decides
@@ -76,6 +106,11 @@ type Section struct {
 
 	// Text-style sections: free-form paragraph lines.
 	Lines []string `toml:"lines"`
+
+	// Text-style sections: optional ASCII-art block. Rendered to the right
+	// of the text when the terminal is wide enough, otherwise below it.
+	// Written as a TOML multi-line string ("""...""").
+	ASCII string `toml:"ascii"`
 
 	// List-style and links-style sections: ordered rows.
 	Items []Item `toml:"items"`
@@ -169,16 +204,36 @@ func (p *Profile) Validate() error {
 			return fmt.Errorf("section %q: %w", s.ID, err)
 		}
 	}
+	if err := validatePalette("theme", p.Theme.Palette); err != nil {
+		return err
+	}
+	if p.Theme.Dark != nil {
+		if err := validatePalette("theme.dark", *p.Theme.Dark); err != nil {
+			return err
+		}
+	}
+	if p.Theme.Light != nil {
+		if err := validatePalette("theme.light", *p.Theme.Light); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validatePalette returns an error if any non-empty color in the palette is
+// not a #RRGGBB hex value. prefix names the TOML table for the message
+// (e.g. "theme", "theme.dark").
+func validatePalette(prefix string, pal Palette) error {
 	for field, color := range map[string]string{
-		"accent":     p.Theme.Accent,
-		"accent2":    p.Theme.Accent2,
-		"foreground": p.Theme.Foreground,
-		"muted":      p.Theme.Muted,
-		"background": p.Theme.Background,
-		"selection":  p.Theme.Selection,
+		"accent":     pal.Accent,
+		"accent2":    pal.Accent2,
+		"foreground": pal.Foreground,
+		"muted":      pal.Muted,
+		"background": pal.Background,
+		"selection":  pal.Selection,
 	} {
 		if color != "" && !hexColor.MatchString(color) {
-			return fmt.Errorf("theme.%s = %q: expected hex color like #7ee787", field, color)
+			return fmt.Errorf("%s.%s = %q: expected hex color like #7ee787", prefix, field, color)
 		}
 	}
 	return nil

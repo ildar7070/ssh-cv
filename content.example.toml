@@ -30,6 +30,12 @@ cta   = "Press Enter to start"
 # Override individual palette colors. Any field you omit keeps the built-in
 # default. Values must be #RRGGBB hex.
 #
+# Visitors toggle between dark and light at runtime by pressing `t`; every
+# session starts in dark.
+#
+# Simple form — flat keys under [theme] are the DARK palette. Light then uses
+# the built-in light defaults:
+#
 # [theme]
 # accent     = "#7ee787"   # primary highlight (tab active, headings)
 # accent2    = "#d2a8ff"   # secondary (subtitles)
@@ -37,6 +43,19 @@ cta   = "Press Enter to start"
 # muted      = "#7d8590"
 # background = "#0d1117"   # used for inverse text on accent
 # selection  = "#1f2a1f"   # list item selection background
+#
+# Full form — define both palettes explicitly. [theme.light] is optional; omit
+# it to keep the built-in light palette.
+#
+# [theme.dark]
+# accent     = "#7ee787"
+# foreground = "#e6edf3"
+# background = "#0d1117"
+#
+# [theme.light]
+# accent     = "#1a7f37"
+# foreground = "#1f2328"
+# background = "#ffffff"
 
 # ─── Sections ─────────────────────────────────────────────────────────
 # Each [[sections]] block becomes one tab in the order listed here.
@@ -47,7 +66,8 @@ cta   = "Press Enter to start"
 #   label — text shown in the tab header (defaults to capitalised `id`)
 #
 # Supported types:
-#   text   — heading from name/tagline + free-form paragraph lines
+#   text   — heading from name/tagline + free-form paragraph lines, plus an
+#            optional `ascii` block (see below)
 #   list   — 30/70 list/detail layout (good for CV, projects, education)
 #   links  — label / value rows (good for contact pages — values are
 #            underlined so terminals can detect them as URLs)
@@ -56,10 +76,18 @@ cta   = "Press Enter to start"
 # internal/tui/sections/) and does not require schema changes.
 
 # ─── text section ─────────────────────────────────────────────────────
+# An optional `ascii` block renders to the right of the text when the
+# terminal is wide enough, and below it otherwise. Use a TOML multi-line
+# string (triple quotes). Backslashes are literal inside """...""".
 [[sections]]
 id    = "start"
 type  = "text"
 label = "Start"
+ascii = """
+   /\\_/\\
+  ( o.o )
+   > ^ <
+"""
 lines = [
   "I build software that ships — distributed systems, developer tools,",
   "and the occasional weekend experiment that gets out of hand.",

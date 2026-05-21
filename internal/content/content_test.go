@@ -183,6 +183,96 @@ lines = ["hi"]
 	}
 }
 
+func TestTheme_FlatKeysAreDarkPalette(t *testing.T) {
+	// Backward compatibility: flat keys under [theme] resolve as the dark
+	// palette, and light falls back to empty (built-in light defaults).
+	path := writeTOML(t, `
+name = "Jane"
+[theme]
+accent = "#abcdef"
+`)
+	p, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	dark, light := p.Theme.ResolvedThemes()
+	if dark.Accent != "#abcdef" {
+		t.Errorf("dark.Accent = %q, want #abcdef", dark.Accent)
+	}
+	if light.Accent != "" {
+		t.Errorf("light.Accent = %q, want empty (built-in fallback)", light.Accent)
+	}
+}
+
+func TestTheme_DarkAndLightSubtables(t *testing.T) {
+	path := writeTOML(t, `
+name = "Jane"
+[theme.dark]
+accent = "#111111"
+[theme.light]
+accent = "#eeeeee"
+`)
+	p, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	dark, light := p.Theme.ResolvedThemes()
+	if dark.Accent != "#111111" {
+		t.Errorf("dark.Accent = %q, want #111111", dark.Accent)
+	}
+	if light.Accent != "#eeeeee" {
+		t.Errorf("light.Accent = %q, want #eeeeee", light.Accent)
+	}
+}
+
+func TestTheme_DarkSubtableOverridesFlatKeys(t *testing.T) {
+	path := writeTOML(t, `
+name = "Jane"
+[theme]
+accent = "#flat00"
+[theme.dark]
+accent = "#dddddd"
+`)
+	// Note: "#flat00" is not valid hex, but [theme.dark] takes precedence in
+	// resolution. Validation still checks the flat keys, so this must fail.
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected validation error for invalid flat theme.accent")
+	}
+}
+
+func TestTheme_BadHexInLight_Errors(t *testing.T) {
+	path := writeTOML(t, `
+name = "Jane"
+[theme.light]
+foreground = "white"
+`)
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "theme.light.foreground") {
+		t.Fatalf("expected theme.light.foreground error, got %v", err)
+	}
+}
+
+func TestSection_ASCIIParsesAndKeepsVisible(t *testing.T) {
+	withFakeValidator(t, "text")
+	path := writeTOML(t, `
+name = "Jane"
+[[sections]]
+id   = "start"
+type = "text"
+ascii = """
+  o
+ /|\\
+"""
+`)
+	p, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !strings.Contains(p.Sections[0].ASCII, "/|\\") {
+		t.Errorf("ascii not parsed, got %q", p.Sections[0].ASCII)
+	}
+}
+
 func TestVisibleSections_HidesEmpty(t *testing.T) {
 	withFakeValidator(t, "text", "list")
 	path := writeTOML(t, `

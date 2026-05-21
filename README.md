@@ -41,7 +41,7 @@ immediately with a message telling you what's missing.
 
 Press <kbd>Enter</kbd> on the splash, <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> or the
 digit keys to switch tabs, <kbd>↑</kbd>/<kbd>↓</kbd> to navigate lists,
-<kbd>q</kbd> to quit.
+<kbd>t</kbd> to toggle between dark and light, <kbd>q</kbd> to quit.
 
 ## Configuration
 
@@ -51,7 +51,10 @@ every supported block:
 
 - `name` — required identity (`tagline` is optional).
 - `[splash]` — entry-screen title and CTA.
-- `[theme]` — six optional hex colors.
+- `[theme]` — six optional hex colors. Either set them flat (the dark palette)
+  or split them into `[theme.dark]` and `[theme.light]`. Visitors toggle between
+  dark and light at runtime with <kbd>t</kbd>; sessions start in dark. If you
+  omit `[theme.light]`, a built-in light palette is used.
 - `[[sections]]` — the ordered list of tabs. Each block becomes one tab.
 
 ### Sections
@@ -64,9 +67,25 @@ Three renderer types ship today:
 
 | `type`  | Layout                                                            | Good for            |
 |---------|------------------------------------------------------------------|---------------------|
-| `text`  | heading from `name`/`tagline` + free-form `lines`                | intro / about       |
+| `text`  | heading from `name`/`tagline` + free-form `lines`; optional `ascii`| intro / about     |
 | `list`  | 30/70 list-detail split; `items` with title/subtitle/meta/bullets| CV, projects, edu   |
 | `links` | label/value rows; values are underlined for click-to-open        | contact             |
+
+A `text` section can carry an optional `ascii` field — a TOML multi-line string
+of ASCII art. It renders to the right of the text when the terminal is wide
+enough, and below the text otherwise:
+
+```toml
+[[sections]]
+id   = "start"
+type = "text"
+ascii = """
+  /\\_/\\
+ ( o.o )
+  > ^ <
+"""
+lines = ["Available for consulting."]
+```
 
 ```toml
 [[sections]]

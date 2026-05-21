@@ -61,7 +61,7 @@ func (listRenderer) Render(s content.Section, ctx RenderContext) string {
 }
 
 func (listRenderer) FooterHint() string {
-	return "↑/↓ navigate · tab / 1-9 switch · q quit"
+	return "↑/↓ navigate · tab / 1-9 switch · t theme · q quit"
 }
 
 func (listRenderer) HandleKey(s content.Section, sel int, msg tea.KeyPressMsg) (int, bool) {

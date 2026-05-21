@@ -147,6 +147,38 @@ func TestEmptyTabsHidden(t *testing.T) {
 	}
 }
 
+func TestThemeToggle_StartsDarkAndToggles(t *testing.T) {
+	m := New(newTestProfile())
+	if m.colorMode != modeDark {
+		t.Fatalf("initial colorMode = %v, want dark", m.colorMode)
+	}
+
+	// "t" toggles in the app...
+	m = step(m, "enter")
+	m = step(m, "t")
+	if m.colorMode != modeLight {
+		t.Errorf("after t, colorMode = %v, want light", m.colorMode)
+	}
+	m = step(m, "t")
+	if m.colorMode != modeDark {
+		t.Errorf("after second t, colorMode = %v, want dark", m.colorMode)
+	}
+}
+
+func TestThemeToggle_WorksOnSplash(t *testing.T) {
+	m := New(newTestProfile())
+	if m.mode != modeSplash {
+		t.Fatalf("expected splash mode")
+	}
+	m = step(m, "t")
+	if m.colorMode != modeLight {
+		t.Errorf("t on splash: colorMode = %v, want light", m.colorMode)
+	}
+	if m.mode != modeSplash {
+		t.Errorf("t should not leave splash; mode = %v", m.mode)
+	}
+}
+
 func TestQuit_Q(t *testing.T) {
 	m := New(newTestProfile())
 	_, cmd := m.Update(keyMsg("q"))

@@ -73,6 +73,7 @@ func TestIsEmpty(t *testing.T) {
 	}{
 		{"text", content.Section{Type: "text"}, true},
 		{"text", content.Section{Type: "text", Lines: []string{"hi"}}, false},
+		{"text", content.Section{Type: "text", ASCII: "  o\n /|\\"}, false},
 		{"list", content.Section{Type: "list"}, true},
 		{"list", content.Section{Type: "list", Items: []content.Item{{Title: "x"}}}, false},
 		{"links", content.Section{Type: "links"}, true},
@@ -103,12 +104,13 @@ func TestExampleTOML_ParsesAndValidates(t *testing.T) {
 
 func TestRender_DoesNotPanic(t *testing.T) {
 	// Smoke test: each renderer should produce something for a populated section.
-	styles := NewStyles(content.Theme{})
+	styles := NewStyles(content.Palette{}, DarkDefaults)
 	profile := &content.Profile{Name: "Test", Tagline: "tag"}
 	ctx := RenderContext{Profile: profile, Styles: styles, Width: 80, Height: 20}
 
 	sections := []content.Section{
 		{ID: "s", Type: "text", Label: "S", Lines: []string{"hi"}},
+		{ID: "a", Type: "text", Label: "A", Lines: []string{"hi"}, ASCII: "  o\n /|\\\n / \\"},
 		{ID: "l", Type: "list", Label: "L", Items: []content.Item{{Title: "a", Bullets: []string{"b"}}}},
 		{ID: "c", Type: "links", Label: "C", Items: []content.Item{{Label: "e", Value: "v"}}},
 	}

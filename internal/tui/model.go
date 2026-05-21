@@ -37,10 +37,23 @@ const (
 	modeApp
 )
 
+// colorMode selects which prebuilt style set the view renders with. Visitors
+// toggle between the two with "t"; sessions always start in dark.
+type colorMode int
+
+const (
+	modeDark colorMode = iota
+	modeLight
+)
+
 // Model is the root Bubble Tea model.
 type Model struct {
 	profile *content.Profile
-	styles  sections.Styles
+
+	// themeStyles holds both prebuilt style sets, indexed by colorMode, so
+	// toggling is a cheap pointer swap rather than a rebuild.
+	themeStyles [2]sections.Styles
+	colorMode   colorMode
 
 	tabs []content.Section // resolved at construction; only non-empty sections
 
@@ -60,16 +73,25 @@ type Model struct {
 
 // New builds a Model. Under Bubble Tea v2 the program downsamples colors to
 // the SSH client's terminal at render time, so styles need no per-session
-// renderer.
+// renderer. Both the dark and light style sets are prebuilt here from the
+// profile's resolved palettes; the session starts in dark.
 func New(p *content.Profile) Model {
+	dark, light := p.Theme.ResolvedThemes()
 	return Model{
-		profile:   p,
-		styles:    sections.NewStyles(p.Theme),
+		profile: p,
+		themeStyles: [2]sections.Styles{
+			modeDark:  sections.NewStyles(dark, sections.DarkDefaults),
+			modeLight: sections.NewStyles(light, sections.LightDefaults),
+		},
+		colorMode: modeDark,
 		tabs:      p.VisibleSections(),
 		mode:      modeSplash,
 		selection: make(map[string]int),
 	}
 }
+
+// styles returns the active style set for the current color mode.
+func (m Model) styles() sections.Styles { return m.themeStyles[m.colorMode] }
 
 func (m Model) Init() tea.Cmd { return blinkCmd() }
 
@@ -87,10 +109,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, blinkCmd()
 
 	case tea.KeyPressMsg:
-		// Quit works everywhere.
+		// Quit and theme toggle work everywhere.
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "t":
+			if m.colorMode == modeDark {
+				m.colorMode = modeLight
+			} else {
+				m.colorMode = modeDark
+			}
+			return m, nil
 		}
 
 		if m.mode == modeSplash {

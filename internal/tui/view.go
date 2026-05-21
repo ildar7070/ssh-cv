@@ -20,7 +20,7 @@ const (
 	// Padding on each side of the longest tab label.
 	tabCellPadding = 2
 
-	defaultFooterHint = "tab / 1-9 switch · q quit"
+	defaultFooterHint = "tab / 1-9 switch · t theme · q quit"
 )
 
 func (m Model) View() tea.View {
@@ -41,7 +41,7 @@ func (m Model) content() string {
 // ─── Splash ────────────────────────────────────────────────────────────
 
 func (m Model) splashView() string {
-	s := m.styles
+	s := m.styles()
 	title := s.SplashTitle.Render(m.profile.Splash.Title)
 	cta := m.profile.Splash.CTA
 	var hint string
@@ -58,7 +58,7 @@ func (m Model) splashView() string {
 // ─── App shell ─────────────────────────────────────────────────────────
 
 func (m Model) appView() string {
-	s := m.styles
+	s := m.styles()
 	inner := s.Doc.GetHorizontalFrameSize()
 	innerW := m.width - inner
 	if innerW < 1 {
@@ -83,7 +83,7 @@ func (m Model) appView() string {
 // ─── Header ────────────────────────────────────────────────────────────
 
 func (m Model) headerView(width int) string {
-	s := m.styles
+	s := m.styles()
 	// Compute the widest tab label so every tab gets the same rendered width
 	// and labels can be centred inside their cell.
 	maxLabel := 0
@@ -124,12 +124,12 @@ func (m Model) bodyView(width, height int) string {
 	}
 	r, ok := sections.Get(cur.Type)
 	if !ok {
-		return m.styles.DetailMuted.Render(
+		return m.styles().DetailMuted.Render(
 			fmt.Sprintf("(no renderer for type %q)", cur.Type))
 	}
 	return r.Render(cur, sections.RenderContext{
 		Profile:  m.profile,
-		Styles:   m.styles,
+		Styles:   m.styles(),
 		Width:    width,
 		Height:   height,
 		Selected: m.selection[cur.ID],
@@ -139,7 +139,7 @@ func (m Model) bodyView(width, height int) string {
 // ─── Footer ────────────────────────────────────────────────────────────
 
 func (m Model) footerView(width int) string {
-	s := m.styles
+	s := m.styles()
 	hint := defaultFooterHint
 	if cur, ok := m.currentSection(); ok {
 		if r, ok := sections.Get(cur.Type); ok {

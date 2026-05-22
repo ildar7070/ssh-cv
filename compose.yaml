@@ -1,4 +1,5 @@
-# Default compose file for local development with `make up`.
+# Default compose file for local development (`docker compose up -d --build`).
+# Seed content.toml first: cp content.example.toml content.toml
 # For consuming the prebuilt image, see README "Quickstart".
 services:
   ssh-cv:

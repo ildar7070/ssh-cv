@@ -147,16 +147,38 @@ volumes:
 
 ## Building from source
 
+Seed your content file once (the example is a fully documented template):
+
 ```sh
-make ci      # fmt + vet + test + build
-make up      # docker compose up -d --build
-make ssh     # ssh -p 2222 localhost
+cp content.example.toml content.toml
+$EDITOR content.toml
 ```
 
-Requires Go 1.25+ for local builds, or just Docker for `make up`. Builds inject
-the version via ldflags (from `git describe`), so `ssh-cv --version` reports the
-running build. Released images pin their base layers by digest for reproducible,
-multi-arch (`amd64`/`arm64`) builds.
+Run it locally with Go (requires Go 1.25+):
+
+```sh
+go run ./cmd/ssh-cv
+```
+
+Or build and run via Docker Compose:
+
+```sh
+docker compose up -d --build       # build the image and start it
+ssh -p 2222 localhost              # connect
+docker compose down                # stop it
+```
+
+Checks and a versioned binary:
+
+```sh
+go vet ./... && go test ./...
+go build -ldflags="-X main.version=$(git describe --tags --always --dirty)" \
+  -o bin/ssh-cv ./cmd/ssh-cv
+```
+
+The `-ldflags` injects the version (from `git describe`), so `ssh-cv --version`
+reports the running build. Released images pin their base layers by digest for
+reproducible, multi-arch (`amd64`/`arm64`) builds.
 
 ## License
 
